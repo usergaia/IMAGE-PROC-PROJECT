@@ -12,8 +12,6 @@ img = imresize(img, [512 512]);
 % - This makes fish features stand out while preserving natural coloration
 lab_img = rgb2lab(img); 
 lab_img(:,:,1) = histeq(lab_img(:,:,1)); 
-img_eq = lab2rgb(lab_img);
-
 %% Step 3: Sobel Edge Detection
 % - Detect edges in the grayscale image to enhance segmentation
 gray_img = rgb2gray(img); % Convert to grayscale for edge detection

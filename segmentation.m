@@ -8,7 +8,7 @@ clc; clear; close all;
 img = imread('images/mouse.jpg');
 img = imresize(img, [512 512]); 
 
-%% Step 3: Apply Canny Edge Detection and Morphological Gradient
+%% Step 2: Apply Canny Edge Detection and Morphological Gradient
 
 % first get grayscale image for edge detection
 gray_img = rgb2gray(img);
@@ -20,7 +20,7 @@ edges = edge(gray_img, 'Canny', [0.04, 0.15]); % adjust threshold as needed
 se = strel('disk', 2);
 morph_gradient = imsubtract(imdilate(edges, se), imerode(edges, se));
 
-%% Step 4: Create Initial Mask and Remove Noise 
+%% Step 3: Create Initial Mask and Remove Noise 
 % create initial mask by filling holes in the edges
 initial_mask = imfill(morph_gradient, 'holes');
 
@@ -39,7 +39,7 @@ if CC_initial.NumObjects > 0
     initial_mask(CC_initial.PixelIdxList{idx_largest}) = true;
 end
 
-%% Step 5: Apply K-means only on the masked region
+%% Step 4: Apply K-means only on the masked region
 % extract pixels within the initial mask for clustering
 [rows, cols, ~] = size(img);
 lab_img = rgb2lab(img); % convert to lab for better color-based segmentation
@@ -63,7 +63,7 @@ cluster_counts = histcounts(cluster_idx, 1:num_clusters+1);
 [~, main_cluster] = max(cluster_counts);
 kmeans_mask = (clustered_image == main_cluster) & initial_mask;
 
-%% Step 6: Combine Initial and K-means masks for Final Refinement
+%% Step 5: Combine Initial and K-means masks for Final Refinement
 % use the k-means result to refine the initial mask
 final_mask = kmeans_mask;
 final_mask = imclose(final_mask, strel('disk', 3)); % connect nearby parts
@@ -81,13 +81,13 @@ else
     final_mask = initial_mask; % fallback to initial mask if k-means fails
 end
 
-%% Step 7: Extract Object Using Final Mask
+%% Step 6: Extract Object Using Final Mask
 extracted_object = zeros(size(img), 'uint8');
 for c = 1:3
     extracted_object(:,:,c) = img(:,:,c) .* uint8(final_mask);
 end
 
-%% Step 8: Create Simple Gradient Background (placeholder)
+%% Step 7: Create Simple Gradient Background (placeholder)
 
 % gradient map based on image dimensions
 [rows, cols, ~] = size(img);
@@ -111,7 +111,7 @@ for c = 1:3
 end
 result_with_new_bg = uint8(new_bg*255) + extracted_object;
 
-%% Step 9: Display Results
+%% Step 8: Display Results
 figure('Position', [100, 100, 1200, 400]);
 subplot(1, 5, 1), imshow(img), title('Original Image');
 subplot(1, 5, 2), imshow(initial_mask), title('Initial Mask');
@@ -119,5 +119,5 @@ subplot(1, 5, 3), imshow(kmeans_mask), title('K-means Mask');
 subplot(1, 5, 4), imshow(extracted_object), title('Extracted Object');
 subplot(1, 5, 5), imshow(result_with_new_bg), title('Object with New Background');
 
-%% Step 10: Object Detection
+%% Step 9: Object Detection
 % TODO

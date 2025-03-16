@@ -1,5 +1,4 @@
-# Image Segmentation and Background Replacement
-
+# Image Processing
 This script performs image segmentation using various techniques, including edge detection, morphological operations, K-means clustering, and object detection. 
 
 ---

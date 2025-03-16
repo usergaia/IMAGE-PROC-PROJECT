@@ -1,6 +1,6 @@
 # Image Segmentation and Background Replacement
 
-This script performs image segmentation using various techniques, including edge detection, morphological operations, and K-means clustering. It extracts the object of interest from an image and replaces the background with a simple gradient. The final result includes the original image, intermediate masks, the extracted object, and the result with the new background.
+This script performs image segmentation using various techniques, including edge detection, morphological operations, K-means clustering, and object detection. 
 
 ---
 

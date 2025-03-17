@@ -5,7 +5,7 @@
 clc; clear; close all;
 
 %% Step 1: Read and Resize Image
-img = imread('images/mouse.jpg');
+img = imread('images/pyr.jpg');
 img = imresize(img, [512 512]); 
 
 %% Step 2: Apply Canny Edge Detection and Morphological Gradient
@@ -38,6 +38,7 @@ if CC_initial.NumObjects > 0
     initial_mask = false(size(initial_mask));
     initial_mask(CC_initial.PixelIdxList{idx_largest}) = true;
 end
+
 
 %% Step 4: Apply K-means only on the masked region
 % extract pixels within the initial mask for clustering
@@ -111,13 +112,63 @@ for c = 1:3
 end
 result_with_new_bg = uint8(new_bg*255) + extracted_object;
 
-%% Step 8: Display Results
-figure('Position', [100, 100, 1200, 400]);
-subplot(1, 5, 1), imshow(img), title('Original Image');
-subplot(1, 5, 2), imshow(initial_mask), title('Initial Mask');
-subplot(1, 5, 3), imshow(kmeans_mask), title('K-means Mask');
-subplot(1, 5, 4), imshow(extracted_object), title('Extracted Object');
-subplot(1, 5, 5), imshow(result_with_new_bg), title('Object with New Background');
 
-%% Step 9: Object Detection
-% TODO
+
+%% Step 8 : Apply Canny Edge Detection and Morphological Gradient to Simple Gradient Background
+
+% first get grayscale image for edge detection
+gray_img2 = rgb2gray(extracted_object);
+
+% apply canny edge detection with optimized thresholds
+edges2 = edge(gray_img2, 'Canny', [0.04, 0.15]); % adjust threshold as needed
+
+% apply morphological gradient for edge enhancement
+morph_gradient = imsubtract(imdilate(edges2, se), imerode(edges2, se));
+
+%% Step 3: Create Initial Mask and Remove Noise 
+% create initial mask by filling holes in the edges
+extbg_mask = imfill(morph_gradient, 'holes');
+
+% perform basic morphological operations to refine the mask
+extbg_mask = imclose(extbg_mask, strel('disk', 4)); % connect nearby edges
+extbg_mask = imopen(extbg_mask, strel('disk', 2));  % remove small noise
+extbg_mask = imfill(extbg_mask, 'holes');           % fill any remaining holes
+extbg_mask = bwareaopen(extbg_mask, 500);           % remove small disconnected regions
+
+
+%% Step 9: Display Results
+figure('Position', [100, 100, 1200, 800]);
+
+subplot(4, 2, 1), imshow(img), title('Original Image');
+subplot(4, 2, 2), imshow(initial_mask), title('Initial Mask');
+subplot(4, 2, 3), imshow(kmeans_mask), title('K-means Mask');
+subplot(4, 2, 4), imshow(extracted_object), title('Extracted Object');
+subplot(4, 2, 5), imshow(result_with_new_bg), title('Object with New Background');
+subplot(4, 2, 6), imshow(extbg_mask), title('Applied masking to image w/ new background');
+
+%% Step 10: Object Detection on Segmented Object in the Image
+
+% Extract properties of connected components in the binary mask
+stats = regionprops(extbg_mask, 'Centroid', 'BoundingBox', 'Area'); 
+
+% Display the original image
+figure, imshow(img); hold on; % Show image and enable overlay drawing
+
+% Loop through each detected object and annotate it
+for i = 1:length(stats)
+    % Draw a bounding box around the detected object
+    rectangle('Position', stats(i).BoundingBox, 'EdgeColor', 'r', 'LineWidth', 2);
+    
+    % Mark the centroid of the object with a green circle
+    plot(stats(i).Centroid(1), stats(i).Centroid(2), 'go', 'MarkerSize', 10, 'LineWidth', 2);
+end
+
+% Add title to the figure
+title('Object Detection using Connected Components');
+
+% Release hold to finalize drawing
+hold off;
+
+
+
+

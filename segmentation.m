@@ -5,7 +5,7 @@
 clc; clear; close all;
 
 %% Step 1: Read and Resize Image
-img = imread('images/orca.jpg');
+img = imread('images/pyr.jpg');
 img = imresize(img, [512 512]); 
 
 %% Step 2: Apply Canny Edge Detection and Morphological Gradient
@@ -27,7 +27,7 @@ initial_mask = imfill(morph_gradient, 'holes');
 % perform basic morphological operations to refine the mask
 initial_mask = imclose(initial_mask, strel('disk', 4)); % connect nearby edges
 initial_mask = imopen(initial_mask, strel('disk', 2));  % remove small noise
-%initial_mask = imfill(initial_mask, 'holes');           % fill any remaining holes
+initial_mask = imfill(initial_mask, 'holes');           % fill any remaining holes
 initial_mask = bwareaopen(initial_mask, 500);           % remove small disconnected regions
 
 % keep only the largest object if there are multiple components
@@ -67,8 +67,7 @@ kmeans_mask = (clustered_image == main_cluster) & initial_mask;
 %% Step 5: Combine Initial and K-means masks for Final Refinement
 % use the k-means result to refine the initial mask
 final_mask = kmeans_mask;
-final_mask = imclose(final_mask, strel('disk', 6)); % connect nearby parts
-final_mask = bwareafilt(final_mask, 2); % Keep two largest regions
+final_mask = imclose(final_mask, strel('disk', 3)); % connect nearby parts
 final_mask = imfill(final_mask, 'holes'); % fill any remaining holes
 final_mask = bwareaopen(final_mask, 500); % remove small objects
 
@@ -147,25 +146,89 @@ subplot(4, 2, 4), imshow(extracted_object), title('Extracted Object');
 subplot(4, 2, 5), imshow(result_with_new_bg), title('Object with New Background');
 subplot(4, 2, 6), imshow(extbg_mask), title('Applied masking to image w/ new background');
 
+
 %% Step 10: Object Detection on Segmented Object in the Image
 
-% Extract properties of connected components in the binary mask
-stats = regionprops(extbg_mask, 'Centroid', 'BoundingBox', 'Area'); 
+stats = regionprops(extbg_mask, 'Centroid', 'BoundingBox'); 
 
-% Display the original image
-figure, imshow(img); hold on; % Show image and enable overlay drawing
+% Load trained KNN model
+load('knnModel.mat', 'knnModel');
+disp(size(knnModel.X));
 
-% Loop through each detected object and annotate it
+figure, imshow(img); title('Object Detection and Classification'); hold on;
 for i = 1:length(stats)
-    % Draw a bounding box around the detected object
-    rectangle('Position', stats(i).BoundingBox, 'EdgeColor', 'r', 'LineWidth', 2);
+    bbox = stats(i).BoundingBox;
+
+    % Crop object inside bounding box
+    obj_crop = imcrop(img, bbox);
+
+    % Ensure object is not too small (to avoid errors in feature extraction)
+    if size(obj_crop, 1) < 10 || size(obj_crop, 2) < 10
+        continue; % Skip small objects
+    end
+
+    % Extract updated features (28 features: 4 texture + 24 color)
+    obj_features = extractImageFeatures(obj_crop);
+    disp(size(obj_features));
+
+    % Ensure correct shape for KNN
+    obj_features = reshape(obj_features, 1, []); 
     
-    % Mark the centroid of the object with a green circle
-    plot(stats(i).Centroid(1), stats(i).Centroid(2), 'go', 'MarkerSize', 10, 'LineWidth', 2);
+    % Predict label
+    predictedLabel = predict(knnModel, obj_features);
+    
+    % Assign label text
+    if predictedLabel == 1
+        labelText = 'Basketball';
+    else
+        labelText = 'Not Basketball';
+    end
+    
+    % Draw bounding box and label
+    rectangle('Position', bbox, 'EdgeColor', 'r', 'LineWidth', 2);
+    text(bbox(1), bbox(2)-10, labelText, 'Color', 'yellow', 'FontSize', 12, 'FontWeight', 'bold');
 end
-
-% Add title to the figure
-title('Object Detection using Connected Components');
-
-% Release hold to finalize drawing
 hold off;
+
+%% Updated Feature Extraction Function
+function featureVector = extractImageFeatures(img)
+    try
+        % Resize to ensure uniform input size
+        img = imresize(img, [256 256]);
+
+        % Convert to grayscale for texture analysis
+        grayImg = rgb2gray(img);
+        
+        % Compute GLCM texture features
+        glcm = graycomatrix(grayImg, 'NumLevels', 8, 'Offset', [0 1]); 
+        glcm = glcm + glcm';
+        glcm = glcm / sum(glcm(:)); % Normalize
+
+        % Compute texture features
+        [I, J] = meshgrid(1:size(glcm, 2), 1:size(glcm, 1));
+        I = I(:);
+        J = J(:);
+        
+        energy = sum(glcm(:).^2);
+        contrast = sum(glcm(:) .* (I - J).^2);
+        homogeneity = sum(glcm(:) ./ (1 + (I - J).^2));
+        entropy = -sum(glcm(glcm > 0) .* log(glcm(glcm > 0))); 
+        
+        % Compute color histograms (normalized)
+        if size(img, 3) == 3  % Ensure image is in RGB
+            rHist = imhist(img(:,:,1), 8) / numel(img(:,:,1)); % Red channel histogram
+            gHist = imhist(img(:,:,2), 8) / numel(img(:,:,2)); % Green channel histogram
+            bHist = imhist(img(:,:,3), 8) / numel(img(:,:,3)); % Blue channel histogram
+        else
+            rHist = zeros(8,1);
+            gHist = zeros(8,1);
+            bHist = zeros(8,1);
+        end
+
+        % Combine all extracted features (4 texture + 24 color histograms)
+        featureVector = [energy, contrast, homogeneity, entropy, rHist', gHist', bHist'];
+    catch ME
+        fprintf('Error extracting features: %s\n', ME.message);
+        featureVector = NaN(1, 28); % Ensure 28-dimensional output
+    end
+end

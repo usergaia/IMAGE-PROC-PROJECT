@@ -156,3 +156,95 @@ subplot(3,3,9), imshow(result_with_new_bg), title('Foreground with New Backgroun
 
 
 
+
+subplot(4, 2, 1), imshow(img), title('Original Image');
+subplot(4, 2, 2), imshow(initial_mask), title('Initial Mask');
+subplot(4, 2, 3), imshow(kmeans_mask), title('K-means Mask');
+subplot(4, 2, 4), imshow(extracted_object), title('Extracted Object');
+subplot(4, 2, 5), imshow(result_with_new_bg), title('Object with New Background');
+subplot(4, 2, 6), imshow(extbg_mask), title('Applied masking to image w/ new background');
+
+
+%% Step 10: Object Detection on Segmented Object in the Image
+
+stats = regionprops(extbg_mask, 'Centroid', 'BoundingBox'); 
+
+% Load trained KNN model
+load('knnModel.mat', 'knnModel');
+disp(size(knnModel.X));
+
+figure, imshow(img); title('Object Detection and Classification'); hold on;
+for i = 1:length(stats)
+    bbox = stats(i).BoundingBox;
+
+    % Extract updated features (28 features: 4 texture + 24 color)
+    obj_features = extractImageFeatures(img);
+    disp(size(obj_features));
+
+    % Ensure correct shape for KNN
+    obj_features = reshape(obj_features, 1, []); 
+    
+    % Predict label
+    predictedLabel = predict(knnModel, obj_features);
+    
+    % Assign label text
+    if predictedLabel == 0
+        labelText = 'Burj Khalifa';
+    elseif predictedLabel == 1
+        labelText = 'Basketball';
+    elseif predictedLabel == 2 
+        labelText = 'Car';
+    elseif predictedLabel == 3 
+        labelText = 'Clown Fish';
+    elseif predictedLabel == 4 
+        labelText = 'Logitech Mouse';
+    end
+    
+    % Draw bounding box and label
+    rectangle('Position', bbox, 'EdgeColor', 'r', 'LineWidth', 2);
+    text(bbox(1), bbox(2)-10, labelText, 'Color', 'yellow', 'FontSize', 12, 'FontWeight', 'bold');
+end
+hold off;
+
+%% Updated Feature Extraction Function
+function featureVector = extractImageFeatures(img)
+    try
+        % Resize to ensure uniform input size
+        img = imresize(img, [256 256]);
+
+        % Convert to grayscale for texture analysis
+        grayImg = rgb2gray(img);
+        
+        % Compute GLCM texture features
+        glcm = graycomatrix(grayImg, 'NumLevels', 8, 'Offset', [0 1]); 
+        glcm = glcm + glcm';
+        glcm = glcm / sum(glcm(:)); % Normalize
+
+        % Compute texture features
+        [I, J] = meshgrid(1:size(glcm, 2), 1:size(glcm, 1));
+        I = I(:);
+        J = J(:);
+        
+        energy = sum(glcm(:).^2);
+        contrast = sum(glcm(:) .* (I - J).^2);
+        homogeneity = sum(glcm(:) ./ (1 + (I - J).^2));
+        entropy = -sum(glcm(glcm > 0) .* log(glcm(glcm > 0))); 
+        
+        % Compute color histograms (normalized)
+        if size(img, 3) == 3  % Ensure image is in RGB
+            rHist = imhist(img(:,:,1), 8) / numel(img(:,:,1)); % Red channel histogram
+            gHist = imhist(img(:,:,2), 8) / numel(img(:,:,2)); % Green channel histogram
+            bHist = imhist(img(:,:,3), 8) / numel(img(:,:,3)); % Blue channel histogram
+        else
+            rHist = zeros(8,1);
+            gHist = zeros(8,1);
+            bHist = zeros(8,1);
+        end
+
+        % Combine all extracted features (4 texture + 24 color histograms)
+        featureVector = [energy, contrast, homogeneity, entropy, rHist', gHist', bHist'];
+    catch ME
+        fprintf('Error extracting features: %s\n', ME.message);
+        featureVector = NaN(1, 28); % Ensure 28-dimensional output
+    end
+end

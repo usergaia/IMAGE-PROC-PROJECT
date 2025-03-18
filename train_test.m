@@ -1,5 +1,5 @@
 % Load extracted features and labels
-load('basketball_features.mat', 'features', 'labels');
+load('feature_extracted.mat', 'features', 'labels', 'names');
 
 % Split dataset: 80% for training, 20% for testing
 cv = cvpartition(length(labels), 'HoldOut', 0.2);

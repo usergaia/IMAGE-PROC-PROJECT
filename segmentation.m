@@ -2,10 +2,10 @@
 %% RAFAEL, EDGAR JR.
 %% TN36
 
-%clc; clear; close all;
+clc; clear; close all;
 
 %% Step 1: Read and Resize Image
-img = imread('images/lighthouse.jpg');
+img = imread('images/tower.jpg');
 img = imresize(img, [512 512]); 
 
 %% Step 2: Apply Canny Edge Detection and Morphological Gradient
@@ -27,7 +27,6 @@ initial_mask = imfill(morph_gradient, 'holes');
 % perform basic morphological operations to refine the mask
 initial_mask = imclose(initial_mask, strel('disk', 5)); % connect nearby edges
 initial_mask = imopen(initial_mask, strel('disk', 2));  % remove small noise
-%initial_mask = imfill(initial_mask, 'holes');           % fill any remaining holes
 initial_mask = bwareaopen(initial_mask, 500);           % remove small disconnected regions
 
 % keep only the largest object if there are multiple components
@@ -39,8 +38,7 @@ if CC_initial.NumObjects > 0
     initial_mask(CC_initial.PixelIdxList{idx_largest}) = true;
 end
 
-
-%% Step 4: Apply K-means only on the masked region
+%% Step 4: Apply K-means only on the masked region with the color space LAB
 % extract pixels within the initial mask for clustering
 [rows, cols, ~] = size(img);
 lab_img = rgb2lab(img); % convert to lab for better color-based segmentation
@@ -83,9 +81,9 @@ else
 end
 
 %% Step 6: Extract Object Using Final Mask
-extracted_foreground_object = zeros(size(img), 'uint8');
+ext_foreground_object = zeros(size(img), 'uint8');
 for c = 1:3
-    extracted_foreground_object(:,:,c) = img(:,:,c) .* uint8(final_mask);
+    ext_foreground_object(:,:,c) = img(:,:,c) .* uint8(final_mask);
 end
 
 ext_background_object = zeros(size(img), 'uint8');
@@ -93,7 +91,7 @@ for c = 1:3
     ext_background_object(:,:,c) = img(:,:,c) .* uint8(~final_mask);
 end
 
-%% Step 7: Create Simple Gradient Background (placeholder)
+%% Step 7: Create Gradient Background (decorative purpose)
 
 % gradient map based on image dimensions
 [rows, cols, ~] = size(img);
@@ -115,30 +113,7 @@ new_bg = zeros(size(img));
 for c = 1:3
     new_bg(:,:,c) = new_background(:,:,c) .* double(background_mask);
 end
-result_with_new_bg = uint8(new_bg*255) + extracted_foreground_object;
-
-
-%% Step 8 : Apply Canny Edge Detection and Morphological Gradient to Simple Gradient Background
-
-% first get grayscale image for edge detection
-gray_img2 = rgb2gray(extracted_foreground_object);
-
-% apply canny edge detection with optimized thresholds
-edges2 = edge(gray_img2, 'Canny', [0.04, 0.15]); % adjust threshold as needed
-
-% apply morphological gradient for edge enhancement
-morph_gradient = imsubtract(imdilate(edges2, se), imerode(edges2, se));
-
-%% Step 3: Create Initial Mask and Remove Noise 
-% create initial mask by filling holes in the edges
-extbg_mask = imfill(morph_gradient, 'holes');
-
-% perform basic morphological operations to refine the mask
-extbg_mask = imclose(extbg_mask, strel('disk', 4)); % connect nearby edges
-extbg_mask = imopen(extbg_mask, strel('disk', 2));  % remove small noise
-extbg_mask = imfill(extbg_mask, 'holes');           % fill any remaining holes
-extbg_mask = bwareaopen(extbg_mask, 500);           % remove small disconnected regions
-
+result_with_new_bg = uint8(new_bg*255) + ext_foreground_object;
 
 %% Step 9: Display Results
 
@@ -146,28 +121,17 @@ figure('Position', [100, 100, 1200, 800]);
 
 subplot(3,3,1), imshow(img), title('Original Image');
 subplot(3,3,2), imshow(edges), title('Canny Edge Detection');
-subplot(3,3,3), imshow(initial_mask), title('Initial Binary Mask (Edge-Based)');
+subplot(3,3,3), imshow(initial_mask), title('Initial Masking (Edge-Detected)');
 subplot(3,3,4), imshow(clustered_image, []), title('K-means Clustering Result');
 subplot(3,3,5), imshow(kmeans_mask), title('Initial K-means Segmentation');
 subplot(3,3,6), imshow(final_mask), title('Refined K-means Segmentation');
-subplot(3,3,7), imshow(ext_background_object), title('Extracted Background Segmentation');
-subplot(3,3,8), imshow(extracted_foreground_object), title('Extracted Foreground Object');
+subplot(3,3,7), imshow(ext_background_object), title('Extracted Background Object');
+subplot(3,3,8), imshow(ext_foreground_object), title('Extracted Foreground Object');
 subplot(3,3,9), imshow(result_with_new_bg), title('Foreground with New Background');
-
-
-
-
-subplot(4, 2, 1), imshow(img), title('Original Image');
-subplot(4, 2, 2), imshow(initial_mask), title('Initial Mask');
-subplot(4, 2, 3), imshow(kmeans_mask), title('K-means Mask');
-subplot(4, 2, 4), imshow(extracted_object), title('Extracted Object');
-subplot(4, 2, 5), imshow(result_with_new_bg), title('Object with New Background');
-subplot(4, 2, 6), imshow(extbg_mask), title('Applied masking to image w/ new background');
-
 
 %% Step 10: Object Detection on Segmented Object in the Image
 
-stats = regionprops(extbg_mask, 'Centroid', 'BoundingBox'); 
+stats = regionprops(ext_foreground_object, 'Centroid', 'BoundingBox'); 
 
 % Load trained KNN model
 load('knnModel.mat', 'knnModel');

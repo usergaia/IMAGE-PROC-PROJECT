@@ -145,6 +145,7 @@ subplot(4, 2, 4), imshow(extracted_object), title('Extracted Object');
 subplot(4, 2, 5), imshow(result_with_new_bg), title('Object with New Background');
 subplot(4, 2, 6), imshow(extbg_mask), title('Applied masking to image w/ new background');
 
+
 %% Step 10: Object Detection on Segmented Object in the Image
 
 stats = regionprops(extbg_mask, 'Centroid', 'BoundingBox'); 
@@ -157,16 +158,8 @@ figure, imshow(img); title('Object Detection and Classification'); hold on;
 for i = 1:length(stats)
     bbox = stats(i).BoundingBox;
 
-    % Crop object inside bounding box
-    obj_crop = imcrop(img, bbox);
-
-    % Ensure object is not too small (to avoid errors in feature extraction)
-    if size(obj_crop, 1) < 10 || size(obj_crop, 2) < 10
-        continue; % Skip small objects
-    end
-
     % Extract updated features (28 features: 4 texture + 24 color)
-    obj_features = extractImageFeatures(obj_crop);
+    obj_features = extractImageFeatures(img);
     disp(size(obj_features));
 
     % Ensure correct shape for KNN
@@ -176,10 +169,16 @@ for i = 1:length(stats)
     predictedLabel = predict(knnModel, obj_features);
     
     % Assign label text
-    if predictedLabel == 1
+    if predictedLabel == 0
+        labelText = 'Burj Khalifa';
+    elseif predictedLabel == 1
         labelText = 'Basketball';
-    else
-        labelText = 'Not Basketball';
+    elseif predictedLabel == 2 
+        labelText = 'Car';
+    elseif predictedLabel == 3 
+        labelText = 'Clown Fish';
+    elseif predictedLabel == 4 
+        labelText = 'Logitech Mouse';
     end
     
     % Draw bounding box and label

@@ -5,7 +5,7 @@
 clc; clear; close all;
 
 %% Step 1: Read and Resize Image
-img = imread('images/pyr.jpg');
+img = imread('images/cf.jpg');
 img = imresize(img, [512 512]); 
 
 %% Step 2: Apply Canny Edge Detection and Morphological Gradient
@@ -25,9 +25,8 @@ morph_gradient = imsubtract(imdilate(edges, se), imerode(edges, se));
 initial_mask = imfill(morph_gradient, 'holes');
 
 % perform basic morphological operations to refine the mask
-initial_mask = imclose(initial_mask, strel('disk', 4)); % connect nearby edges
+initial_mask = imclose(initial_mask, strel('disk', 5)); % connect nearby edges
 initial_mask = imopen(initial_mask, strel('disk', 2));  % remove small noise
-initial_mask = imfill(initial_mask, 'holes');           % fill any remaining holes
 initial_mask = bwareaopen(initial_mask, 500);           % remove small disconnected regions
 
 % keep only the largest object if there are multiple components
@@ -67,7 +66,7 @@ kmeans_mask = (clustered_image == main_cluster) & initial_mask;
 %% Step 5: Combine Initial and K-means masks for Final Refinement
 % use the k-means result to refine the initial mask
 final_mask = kmeans_mask;
-final_mask = imclose(final_mask, strel('disk', 3)); % connect nearby parts
+final_mask = imclose(final_mask, strel('disk', 5)); % connect nearby parts
 final_mask = imfill(final_mask, 'holes'); % fill any remaining holes
 final_mask = bwareaopen(final_mask, 500); % remove small objects
 
@@ -145,7 +144,6 @@ subplot(4, 2, 3), imshow(kmeans_mask), title('K-means Mask');
 subplot(4, 2, 4), imshow(extracted_object), title('Extracted Object');
 subplot(4, 2, 5), imshow(result_with_new_bg), title('Object with New Background');
 subplot(4, 2, 6), imshow(extbg_mask), title('Applied masking to image w/ new background');
-
 
 %% Step 10: Object Detection on Segmented Object in the Image
 

@@ -1,68 +1,103 @@
-% Define dataset folders
-basketballPath = 'dataset/basketball/';
-nonBasketballPath = 'dataset/non-basketball/';
+clc; clear; close all;
 
-% Get list of images
-basketballImages = dir(fullfile(basketballPath, '*.jpg')); 
-nonBasketballImages = dir(fullfile(nonBasketballPath, '*.jpg')); 
+% Define folders for positive (basketball) and negative (non-basketball) classes
+posFolder = 'dataset/basketball/'; % Folder containing basketball images (label = 1)
+negFolder = 'dataset/non-basketball/'; % Folder containing non-basketball images (label = 0)
 
-% Initialize feature and label arrays
+% Get list of images in both folders
+posFiles = dir(fullfile(posFolder, '*.jpg'));
+negFiles = dir(fullfile(negFolder, '*.jpg'));
+
+% Initialize arrays to store feature data
 features = [];
+names = {};
 labels = [];
 
-% Process basketball images (label = 1)
-for i = 1:length(basketballImages)
-    img = imread(fullfile(basketballPath, basketballImages(i).name));  
+% Process positive class images (basketball, label = 1)
+for k = 1:length(posFiles)
+    imgPath = fullfile(posFolder, posFiles(k).name);
+    img = imread(imgPath);
     featureVector = extractFeatures(img);
-    features = [features; featureVector];
-    labels = [labels; 1];  % Basketball label
-end
-
-% Process non-basketball images (label = 0)
-for i = 1:length(nonBasketballImages)
-    img = imread(fullfile(nonBasketballPath, nonBasketballImages(i).name));  
-    featureVector = extractFeatures(img);
-    features = [features; featureVector];
-    labels = [labels; 0];  % Non-basketball label
-end
-
-% Normalize entire feature matrix (row-wise normalization)
-features = normalize(features, 'range');
-
-% Save extracted features and labels
-save('basketball_features.mat', 'features', 'labels');
-
-% ---- FEATURE EXTRACTION FUNCTION ----
-function featureVector = extractFeatures(img)
-    % Resize image for consistency
-    img = imresize(img, [256 256]);  
-
-    % Ensure image is RGB
-    if size(img, 3) == 1  
-        % Convert grayscale to RGB (repeat channels)
-        img = cat(3, img, img, img);
+    
+    % Ensure the extracted feature vector has the correct size
+    if numel(featureVector) == 28
+        features = [features; featureVector];
+        names{end+1} = posFiles(k).name;
+        labels = [labels; 1];
+    else
+        fprintf('Skipping %s due to incorrect feature extraction.\n', posFiles(k).name);
     end
-
-    % Convert to grayscale for texture extraction
-    grayImg = rgb2gray(img);
-
-    %% 🔹 Color Histogram Extraction (Fixed Length)
-    numBins = 32; % Ensure consistent bin size
-    histRed = imhist(img(:,:,1), numBins) / numel(img(:,:,1)); 
-    histGreen = imhist(img(:,:,2), numBins) / numel(img(:,:,2)); 
-    histBlue = imhist(img(:,:,3), numBins) / numel(img(:,:,3)); 
-    colorFeatures = [histRed' histGreen' histBlue'];  % (1 × 96)
-
-    %% 🔹 Texture Feature Extraction (GLCM - Fixed Size)
-    offsets = [0 1; -1 1; -1 0; -1 -1]; 
-    glcm = graycomatrix(grayImg, 'Offset', offsets, 'NumLevels', 32); 
-    stats = graycoprops(glcm, {'Contrast', 'Correlation', 'Energy', 'Homogeneity'});
-
-    % Ensure GLCM features have a fixed length (take mean)
-    textureFeatures = [mean(stats.Contrast), mean(stats.Correlation), ...
-                       mean(stats.Energy), mean(stats.Homogeneity)]; % (1 × 4)
-
-    %% 🔹 Final Feature Vector (Fixed Size)
-    featureVector = [colorFeatures, textureFeatures];  % (1 × 100)
 end
 
+% Process negative class images (non-basketball, label = 0)
+for k = 1:length(negFiles)
+    imgPath = fullfile(negFolder, negFiles(k).name);
+    img = imread(imgPath);
+    featureVector = extractFeatures(img);
+    
+    % Ensure the extracted feature vector has the correct size
+    if numel(featureVector) == 28
+        features = [features; featureVector];
+        names{end+1} = negFiles(k).name;
+        labels = [labels; 0];
+    else
+        fprintf('Skipping %s due to incorrect feature extraction.\n', negFiles(k).name);
+    end
+end
+
+% Ensure features matrix is not empty before saving
+if isempty(features)
+    error('No valid features extracted. Check image formats and GLCM computation.');
+end
+
+% Save features, labels, and image names into a .mat file
+save('texture_color_features.mat', 'features', 'labels', 'names');
+
+fprintf('Feature extraction completed. Data saved to texture_color_features.mat\n');
+
+% =======================================================================
+%                     FEATURE EXTRACTION FUNCTION
+% =======================================================================
+function featureVector = extractFeatures(img)
+    try
+        % Convert to grayscale for GLCM feature extraction
+        if size(img, 3) == 3
+            gray = rgb2gray(img);
+        else
+            gray = img;
+        end
+        
+        % Compute GLCM features
+        glcm = graycomatrix(gray, 'NumLevels', 8, 'Offset', [0 1]); 
+        glcm = glcm + glcm';
+        glcm = glcm / sum(glcm(:)); % Normalize
+        
+        % Create index matrices
+        [I, J] = meshgrid(1:size(glcm, 2), 1:size(glcm, 1));
+        I = I(:);
+        J = J(:);
+        
+        % Extract texture features
+        energy = sum(glcm(:).^2);
+        contrast = sum(glcm(:) .* (I - J).^2);
+        homogeneity = sum(glcm(:) ./ (1 + (I - J).^2));
+        entropy = -sum(glcm(glcm > 0) .* log(glcm(glcm > 0))); 
+        
+        % Extract color histogram features (normalized)
+        if size(img, 3) == 3  % Ensure image is in RGB
+            rHist = imhist(img(:,:,1), 8) / numel(img(:,:,1)); % Red channel histogram
+            gHist = imhist(img(:,:,2), 8) / numel(img(:,:,2)); % Green channel histogram
+            bHist = imhist(img(:,:,3), 8) / numel(img(:,:,3)); % Blue channel histogram
+        else
+            rHist = zeros(8,1);
+            gHist = zeros(8,1);
+            bHist = zeros(8,1);
+        end
+
+        % Combine all features into one vector
+        featureVector = [energy, contrast, homogeneity, entropy, rHist', gHist', bHist'];
+    catch ME
+        fprintf('Error processing image: %s\n', ME.message);
+        featureVector = NaN(1, 28); % 4 texture + 24 color features
+    end
+end

@@ -132,93 +132,105 @@ subplot(3,3,9), imshow(result_with_new_bg), title('Foreground with New Backgroun
 
 %% Step 10: Object Detection on Segmented Object in the Image
 
-% Convert extracted_object to binary for regionprops while keeping the RGB for feature extraction
+% Convert extracted foreground object to binary for region analysis
 extracted_binary = rgb2gray(ext_foreground_object) > 0;
+
+% Extract region properties from the final mask
 stats = regionprops(final_mask, 'Centroid', 'BoundingBox');
 
-% Load trained KNN model
+% Load the pre-trained KNN model
 load('knnModel.mat', 'knnModel');
 disp(size(knnModel.X));
 
-figure, imshow(img); title('Object Detection and Classification'); hold on;
-for i = 1:length(stats)
-    bbox = stats(i).BoundingBox;
+% Create figure for displaying results
+figure;
+imshow(img);
+title('Object Detection and Classification');
+hold on;
 
-    % Extract updated features from the RGB extracted_object (28 features: 4 texture + 24 color)
+% Iterate through each detected region
+for i = 1:length(stats)
+    % Get the bounding box coordinates
+    bbox = stats(i).BoundingBox;
+    
+    % Extract features from the RGB foreground object
     obj_features = extractImageFeatures(ext_foreground_object);
     disp(size(obj_features));
-
-    % Ensure correct shape for KNN
-    obj_features = reshape(obj_features, 1, []); 
     
-    % Predict label
+    % Reshape features to match the KNN model input format
+    obj_features = reshape(obj_features, 1, []);
+    
+    % Predict the object class using the KNN model
     predictedLabel = predict(knnModel, obj_features);
     
-    % Assign label text
+    % Assign appropriate label text based on the prediction
     if predictedLabel == 0
         labelText = 'Burj Khalifa';
     elseif predictedLabel == 1
         labelText = 'Basketball';
-    elseif predictedLabel == 2 
+    elseif predictedLabel == 2
         labelText = 'Car';
-    elseif predictedLabel == 3 
+    elseif predictedLabel == 3
         labelText = 'Clown Fish';
-    elseif predictedLabel == 4 
+    elseif predictedLabel == 4
         labelText = 'Logitech Mouse';
     end
     
-    % Draw bounding box and label
+    % Draw the bounding box around the detected object
     rectangle('Position', bbox, 'EdgeColor', 'r', 'LineWidth', 2);
+    
+    % Display the class label
     text(bbox(1), bbox(2)-10, labelText, 'Color', 'yellow', 'FontSize', 12, 'FontWeight', 'bold');
 end
 hold off;
 
-
-%% Updated Feature Extraction Function
+%% Feature Extraction Function
 function featureVector = extractImageFeatures(img)
     try
-        % Resize to ensure uniform input size
+        % Standardize image size to ensure consistent feature extraction
         img = imresize(img, [256 256]);
-
-        % Convert to grayscale for GLCM feature extraction
+        
+        % Convert to grayscale for texture analysis if RGB
         if size(img, 3) == 3
             gray = rgb2gray(img);
         else
             gray = img;
         end
         
-        % Compute GLCM features
-        glcm = graycomatrix(gray, 'NumLevels', 8, 'Offset', [0 1]); 
-        glcm = glcm + glcm'; % Make symmetric
-        glcm = glcm / sum(glcm(:)); % Normalize
+        % Compute Gray Level Co-occurrence Matrix (GLCM) for texture features
+        glcm = graycomatrix(gray, 'NumLevels', 8, 'Offset', [0 1]);
+        glcm = glcm + glcm';  % Make symmetric
+        glcm = glcm / sum(glcm(:));  % Normalize
         
-        % Extract texture features
+        % Set up the coordinate system for GLCM calculations
         [I, J] = meshgrid(1:size(glcm, 2), 1:size(glcm, 1));
         I = I(:);
         J = J(:);
         
+        % Calculate Haralick texture features from the Gray Level Co-occurrence Matrix (GLCM)
         energy = sum(glcm(:).^2);
         contrast = sum(glcm(:) .* (I - J).^2);
         homogeneity = sum(glcm(:) ./ (1 + (I - J).^2));
-        entropy = -sum(glcm(glcm > 0) .* log(glcm(glcm > 0))); 
-       
+        entropy = -sum(glcm(glcm > 0) .* log(glcm(glcm > 0)));
         
-        % Extract color histogram features (normalized)
+        % Compute color histogram features with normalization
         if size(img, 3) == 3
-            rHist = imhist(img(:,:,1), 8) / numel(img(:,:,1)); 
-            gHist = imhist(img(:,:,2), 8) / numel(img(:,:,2)); 
-            bHist = imhist(img(:,:,3), 8) / numel(img(:,:,3)); 
+            % Extract and normalize color channel histograms
+            rHist = imhist(img(:,:,1), 8) / numel(img(:,:,1));
+            gHist = imhist(img(:,:,2), 8) / numel(img(:,:,2));
+            bHist = imhist(img(:,:,3), 8) / numel(img(:,:,3));
         else
+            % Handle grayscale images by using empty color histograms
             rHist = zeros(8,1);
             gHist = zeros(8,1);
             bHist = zeros(8,1);
         end
-
-        % Combine all features into one vector
+        
+        % Combine texture and color features into a single feature vector
         featureVector = [energy, contrast, homogeneity, entropy, rHist', gHist', bHist'];
-
     catch ME
+        % Handle any errors during feature extraction
         fprintf('Error processing image: %s\n', ME.message);
-        featureVector = NaN(1, 28);
+        featureVector = NaN(1, 28);  % Return NaN vector with proper dimensions
     end
 end

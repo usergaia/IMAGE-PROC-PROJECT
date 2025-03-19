@@ -12,7 +12,7 @@ Y_train = labels(trainIdx, :);
 X_test = features(testIdx, :);
 Y_test = labels(testIdx, :);
 
-% Train KNN classifier with k=5 (you can tune this later)
+% Train KNN classifier with k=5 
 knnModel = fitcknn(X_train, Y_train, 'NumNeighbors', 5, 'Standardize', 1);
 
 % Predict labels for test data

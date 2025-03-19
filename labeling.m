@@ -1,132 +1,70 @@
 clc; clear; close all;
 
-% Define folders correctly
+% Define dataset folders
 burjFolderPath = 'dataset/burj-clean/';
 bballFolderPath = 'dataset/basketball-clean/';
 carFolderPath = 'dataset/car-clean/';
 fishFolderPath = 'dataset/clownfish-clean/';
 mouseFolderPath = 'dataset/mouse-clean/';
 
-% Get list of images
+% Load image files from each folder
 burjFiles = dir(fullfile(burjFolderPath, '*.jpg'));
 bballFiles = dir(fullfile(bballFolderPath, '*.jpg'));
 carFiles = dir(fullfile(carFolderPath, '*.jpg'));
 fishFiles = dir(fullfile(fishFolderPath, '*.jpg'));
 mouseFiles = dir(fullfile(mouseFolderPath, '*.jpg'));
 
-% Initialize arrays to store feature data
+% Initialize storage for features, image names, and labels
 features = [];
 names = {};
 labels = [];
 
+% Process images and extract features
+processImages(burjFiles, burjFolderPath, 0);
+processImages(bballFiles, bballFolderPath, 1);
+processImages(carFiles, carFolderPath, 2);
+processImages(fishFiles, fishFolderPath, 3);
+processImages(mouseFiles, mouseFolderPath, 4);
 
-% Process images correctly
-for k = 1:length(burjFiles)
-    imgPath = fullfile(burjFolderPath, burjFiles(k).name); % Use original folder path
-    img = imread(imgPath);
-    featureVector = extractFeatures(img);
-    
-    if numel(featureVector) == 28
-        features = [features; featureVector];
-        names{end+1} = burjFiles(k).name;
-        labels = [labels; 0];
-    else
-        fprintf('Skipping %s due to incorrect feature extraction.\n', burjFiles(k).name);
-    end
-end
-
-% Process class images (basketball, label = 1)
-for k = 1:length(bballFiles)
-    imgPath = fullfile(bballFolderPath, bballFiles(k).name);
-    img = imread(imgPath);
-    featureVector = extractFeatures(img);
-    
-    % Ensure the extracted feature vector has the correct size
-    if numel(featureVector) == 28
-        features = [features; featureVector];
-        names{end+1} = bballFiles(k).name;
-        labels = [labels; 1];
-    else
-        fprintf('Skipping %s due to incorrect feature extraction.\n', bballFiles(k).name);
-    end
-end
-
-
-
-% Process class images (car, label = 2)
-for k = 1:length(carFiles)
-    imgPath = fullfile(carFolderPath, carFiles(k).name);
-    img = imread(imgPath);
-    featureVector = extractFeatures(img);
-    
-    % Ensure the extracted feature vector has the correct size
-    if numel(featureVector) == 28
-        features = [features; featureVector];
-        names{end+1} = carFiles(k).name;
-        labels = [labels; 2];
-    else
-        fprintf('Skipping %s due to incorrect feature extraction.\n', carFiles(k).name);
-    end
-end
-
-% Process class images (Clown Fish, label = 3)
-for k = 1:length(fishFiles)
-    imgPath = fullfile(fishFolderPath, fishFiles(k).name);
-    img = imread(imgPath);
-    featureVector = extractFeatures(img);
-    
-    % Ensure the extracted feature vector has the correct size
-    if numel(featureVector) == 28
-        features = [features; featureVector];
-        names{end+1} = fishFiles(k).name;
-        labels = [labels; 3];
-    else
-        fprintf('Skipping %s due to incorrect feature extraction.\n', fishFiles(k).name);
-    end
-end
-
-% Process class images (Logitech Mouse, label = 4)
-for k = 1:length(mouseFiles)
-    imgPath = fullfile(mouseFolderPath, mouseFiles(k).name);
-    img = imread(imgPath);
-    featureVector = extractFeatures(img);
-    
-    % Ensure the extracted feature vector has the correct size
-    if numel(featureVector) == 28
-        features = [features; featureVector];
-        names{end+1} = mouseFiles(k).name;
-        labels = [labels; 4];
-    else
-        fprintf('Skipping %s due to incorrect feature extraction.\n', mouseFiles(k).name);
-    end
-end
-
-% Ensure features matrix is not empty before saving
+% Save extracted feature data if valid
 if isempty(features)
     error('No valid features extracted. Check image formats and GLCM computation.');
 end
 
-% Save features, labels, and image names into a .mat file
 save('feature_extracted.mat', 'features', 'labels', 'names');
+fprintf('Feature extraction completed. Data saved to feature_extracted.mat\n');
 
-fprintf('Feature extraction completed. Data saved to texture_color_features.mat\n');
+% Function to process images and extract features
+function processImages(imageFiles, folderPath, label)
+    for k = 1:length(imageFiles)
+        imgPath = fullfile(folderPath, imageFiles(k).name);
+        img = imread(imgPath);
+        featureVector = extractFeatures(img);
+        
+        if numel(featureVector) == 28
+            features = [features; featureVector];
+            names{end+1} = imageFiles(k).name;
+            labels = [labels; label];
+        else
+            fprintf('Skipping %s due to incorrect feature extraction.\n', imageFiles(k).name);
+        end
+    end
+end
 
-% =======================================================================
-%                     FEATURE EXTRACTION FUNCTION
-% =======================================================================
+% Function to extract features from an image
 function featureVector = extractFeatures(img)
     try
-        % Convert to grayscale for GLCM feature extraction
+        % Convert to grayscale if image is RGB
         if size(img, 3) == 3
             gray = rgb2gray(img);
         else
             gray = img;
         end
         
-        % Compute GLCM features
-        glcm = graycomatrix(gray, 'NumLevels', 8, 'Offset', [0 1]); 
-        glcm = glcm + glcm'; % Make symmetric
-        glcm = glcm / sum(glcm(:)); % Normalize
+        % Compute GLCM and normalize
+        glcm = graycomatrix(gray, 'NumLevels', 8, 'Offset', [0 1]);
+        glcm = glcm + glcm';
+        glcm = glcm / sum(glcm(:));
         
         % Extract texture features
         [I, J] = meshgrid(1:size(glcm, 2), 1:size(glcm, 1));
@@ -137,9 +75,8 @@ function featureVector = extractFeatures(img)
         contrast = sum(glcm(:) .* (I - J).^2);
         homogeneity = sum(glcm(:) ./ (1 + (I - J).^2));
         entropy = -sum(glcm(glcm > 0) .* log(glcm(glcm > 0))); 
-       
         
-        % Extract color histogram features (normalized)
+        % Compute color histogram features
         if size(img, 3) == 3
             rHist = imhist(img(:,:,1), 8) / numel(img(:,:,1)); 
             gHist = imhist(img(:,:,2), 8) / numel(img(:,:,2)); 
@@ -149,10 +86,9 @@ function featureVector = extractFeatures(img)
             gHist = zeros(8,1);
             bHist = zeros(8,1);
         end
-
-        % Combine all features into one vector
+        
+        % Combine features into a single vector
         featureVector = [energy, contrast, homogeneity, entropy, rHist', gHist', bHist'];
-
     catch ME
         fprintf('Error processing image: %s\n', ME.message);
         featureVector = NaN(1, 28);

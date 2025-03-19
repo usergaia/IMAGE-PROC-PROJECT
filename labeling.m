@@ -1,11 +1,11 @@
 clc; clear; close all;
 
 % Define folders correctly
-burjFolderPath = 'dataset/burj/';
-bballFolderPath = 'dataset/basketball/';
-carFolderPath = 'dataset/car/';
-fishFolderPath = 'dataset/clownfish/';
-mouseFolderPath = 'dataset/mouse/';
+burjFolderPath = 'dataset/burj-clean/';
+bballFolderPath = 'dataset/basketball-clean/';
+carFolderPath = 'dataset/car-clean/';
+fishFolderPath = 'dataset/clownfish-clean/';
+mouseFolderPath = 'dataset/mouse-clean/';
 
 % Get list of images
 burjFiles = dir(fullfile(burjFolderPath, '*.jpg'));
@@ -69,7 +69,7 @@ for k = 1:length(carFiles)
     end
 end
 
-% Process class images (car, label = 3)
+% Process class images (Clown Fish, label = 3)
 for k = 1:length(fishFiles)
     imgPath = fullfile(fishFolderPath, fishFiles(k).name);
     img = imread(imgPath);
@@ -85,7 +85,7 @@ for k = 1:length(fishFiles)
     end
 end
 
-% Process class images (clown fish, label = 4)
+% Process class images (Logitech Mouse, label = 4)
 for k = 1:length(mouseFiles)
     imgPath = fullfile(mouseFolderPath, mouseFiles(k).name);
     img = imread(imgPath);

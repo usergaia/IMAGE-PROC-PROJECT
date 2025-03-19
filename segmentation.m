@@ -5,7 +5,7 @@
 clc; clear; close all;
 
 %% Step 1: Read and Resize Image
-img = imread('images/tower.jpg');
+img = imread('images/burj.jpg');
 img = imresize(img, [512 512]); 
 
 %% Step 2: Apply Canny Edge Detection and Morphological Gradient
@@ -129,9 +129,12 @@ subplot(3,3,7), imshow(ext_background_object), title('Extracted Background Objec
 subplot(3,3,8), imshow(ext_foreground_object), title('Extracted Foreground Object');
 subplot(3,3,9), imshow(result_with_new_bg), title('Foreground with New Background');
 
+
 %% Step 10: Object Detection on Segmented Object in the Image
 
-stats = regionprops(ext_foreground_object, 'Centroid', 'BoundingBox'); 
+% Convert extracted_object to binary for regionprops while keeping the RGB for feature extraction
+extracted_binary = rgb2gray(ext_foreground_object) > 0;
+stats = regionprops(final_mask, 'Centroid', 'BoundingBox');
 
 % Load trained KNN model
 load('knnModel.mat', 'knnModel');
@@ -141,8 +144,8 @@ figure, imshow(img); title('Object Detection and Classification'); hold on;
 for i = 1:length(stats)
     bbox = stats(i).BoundingBox;
 
-    % Extract updated features (28 features: 4 texture + 24 color)
-    obj_features = extractImageFeatures(img);
+    % Extract updated features from the RGB extracted_object (28 features: 4 texture + 24 color)
+    obj_features = extractImageFeatures(ext_foreground_object);
     disp(size(obj_features));
 
     % Ensure correct shape for KNN
@@ -170,21 +173,26 @@ for i = 1:length(stats)
 end
 hold off;
 
+
 %% Updated Feature Extraction Function
 function featureVector = extractImageFeatures(img)
     try
         % Resize to ensure uniform input size
         img = imresize(img, [256 256]);
 
-        % Convert to grayscale for texture analysis
-        grayImg = rgb2gray(img);
+        % Convert to grayscale for GLCM feature extraction
+        if size(img, 3) == 3
+            gray = rgb2gray(img);
+        else
+            gray = img;
+        end
         
-        % Compute GLCM texture features
-        glcm = graycomatrix(grayImg, 'NumLevels', 8, 'Offset', [0 1]); 
-        glcm = glcm + glcm';
+        % Compute GLCM features
+        glcm = graycomatrix(gray, 'NumLevels', 8, 'Offset', [0 1]); 
+        glcm = glcm + glcm'; % Make symmetric
         glcm = glcm / sum(glcm(:)); % Normalize
-
-        % Compute texture features
+        
+        % Extract texture features
         [I, J] = meshgrid(1:size(glcm, 2), 1:size(glcm, 1));
         I = I(:);
         J = J(:);
@@ -193,22 +201,24 @@ function featureVector = extractImageFeatures(img)
         contrast = sum(glcm(:) .* (I - J).^2);
         homogeneity = sum(glcm(:) ./ (1 + (I - J).^2));
         entropy = -sum(glcm(glcm > 0) .* log(glcm(glcm > 0))); 
+       
         
-        % Compute color histograms (normalized)
-        if size(img, 3) == 3  % Ensure image is in RGB
-            rHist = imhist(img(:,:,1), 8) / numel(img(:,:,1)); % Red channel histogram
-            gHist = imhist(img(:,:,2), 8) / numel(img(:,:,2)); % Green channel histogram
-            bHist = imhist(img(:,:,3), 8) / numel(img(:,:,3)); % Blue channel histogram
+        % Extract color histogram features (normalized)
+        if size(img, 3) == 3
+            rHist = imhist(img(:,:,1), 8) / numel(img(:,:,1)); 
+            gHist = imhist(img(:,:,2), 8) / numel(img(:,:,2)); 
+            bHist = imhist(img(:,:,3), 8) / numel(img(:,:,3)); 
         else
             rHist = zeros(8,1);
             gHist = zeros(8,1);
             bHist = zeros(8,1);
         end
 
-        % Combine all extracted features (4 texture + 24 color histograms)
+        % Combine all features into one vector
         featureVector = [energy, contrast, homogeneity, entropy, rHist', gHist', bHist'];
+
     catch ME
-        fprintf('Error extracting features: %s\n', ME.message);
-        featureVector = NaN(1, 28); % Ensure 28-dimensional output
+        fprintf('Error processing image: %s\n', ME.message);
+        featureVector = NaN(1, 28);
     end
 end

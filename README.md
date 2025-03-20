@@ -121,7 +121,7 @@ The script creates a visualization showing:
 - Ensure both predicted (final_mask) and ground truth masks are binary
 - Calculate Intersection over Union (IoU):
   ```
-  IoU = (Intersection / Union) * 100%
+  IoU = (Intersection / Union) * 100
   ```
 - Display IoU accuracy percentage
 - Create a visual comparison showing:

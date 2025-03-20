@@ -28,10 +28,6 @@ gt_mask = imread('images/ground_truth_mask/ball_m.jpg'); % ground truth mask
 %exp_ext_obj = imread('images/ground_truth/lm.jpg'); % expected extracted object (ground truth)
 %gt_mask = imread('images/ground_truth_mask/lm_m.jpg'); % ground truth mask
 
-%img = imread('test1.jpg'); % input image
-%exp_ext_obj = imread('test2.jpg'); % expected extracted object (ground truth)
-%gt_mask = imread('test2.jpg'); % ground truth mask
-
 img = imresize(img, [512 512]); 
 exp_ext_obj = imresize(exp_ext_obj, [512 512]);
 gt_mask = imresize(gt_mask, [512 512]); 

@@ -5,9 +5,9 @@
 clc; clear; close all;
 
 %% Step 1: Read and Resize Image
-img = imread('images/raw/cf.jpg'); % input image
-exp_ext_obj = imread('images/ground_truth/cf.jpg'); % expected extracted object (ground truth)
-gt_mask = imread('images/ground_truth_mask/cf_m.jpg'); % ground truth mask
+img = imread('images/raw/lm.jpg'); % input image
+exp_ext_obj = imread('images/ground_truth/lm.jpg'); % expected extracted object (ground truth)
+gt_mask = imread('images/ground_truth_mask/lm_m.jpg'); % ground truth mask
 
 img = imresize(img, [512 512]); 
 exp_ext_obj = imresize(exp_ext_obj, [512 512]);
@@ -98,40 +98,52 @@ end
 
 %%% FOREGROUND %%%
 
-% get the dimensions of the input image (height, width, and channels) 
-[h, w, ~] = size(img);  % ignore channel because we don't need it
+% get the dimensions of the input image
+[h, w, ~] = size(img);
 
-% define the number of posterization levels to reduce unique colors for more cftoonish effect.  
+% define the number of posterization levels for cartoon effect
 posterization_levels = 8;  
 
-% apply posterization by grouping pixel values into fewer shades
+% apply posterization to the entire foreground
 posterized_img = floor(double(ext_foreground_object) / (256 / posterization_levels)) * (256 / posterization_levels);  
-posterized_img = uint8(posterized_img); % convert back to 8-bit format for proper display.  
+posterized_img = uint8(posterized_img);
 
-% create edges of the extracted object to highlight key boundaries
-gray_foreground = rgb2gray(ext_foreground_object);  % convert the foreground image to grayscale since edge detection works best without color information
-comic_edges = edge(gray_foreground, 'Canny', [0.1, 0.2]); % detect edges using the canny method to highlight key boundaries
-comic_edges = bwmorph(comic_edges, 'thin');  % thin the detected edges to remove excess pixels
-comic_edges = comic_edges & final_mask; % retain only the edges within the segmented object to prevent unwanted outlines outside the subject
-
-% boost the colors of the posterized image to enhance vibrancy
-color_boost_factor = 1.3;  
+% boost the colors throughout the entire foreground to enhance vibrancy
+color_boost_factor = 5;  
 boosted_colors = posterized_img * color_boost_factor;  
-
-% clamp color values to a maximum of 255 to prevent overflow and ensure valid pixel intensities
 boosted_colors(boosted_colors > 255) = 255;  
-
-% convert the color-boosted image back to 8-bit format for proper display and function compatibility 
 comic_foreground = uint8(boosted_colors);  
 
-% thicken the detected edges to strengthen the black outlines
-line_thickness = 1;  
-thick_edges = imdilate(comic_edges, strel('disk', line_thickness));  
+% apply saturation boost to make colors more vibrant throughout
+hsv_img = rgb2hsv(comic_foreground);
+hsv_img(:,:,2) = hsv_img(:,:,2) * 1.4; % Increase saturation
+hsv_img(:,:,2) = min(hsv_img(:,:,2), 1); % Cap at maximum saturation
+comic_foreground = hsv2rgb(hsv_img);
+comic_foreground = uint8(comic_foreground * 255);
 
-% remove colors where thick edges appear to ensure black outlines remain visible over the colored image
-for c = 1:3  
-    comic_foreground(:,:,c) = comic_foreground(:,:,c) .* uint8(~thick_edges);  
-end  
+% add overall warm tone to the entire foreground
+warm_factor = [1.1, 1.0, 0.85]; 
+for c = 1:3
+    temp = double(comic_foreground(:,:,c)) * warm_factor(c);
+    temp(temp > 255) = 255;
+    comic_foreground(:,:,c) = uint8(temp);
+end
+
+% create edges for outline effect
+gray_foreground = rgb2gray(ext_foreground_object);
+comic_edges = edge(gray_foreground, 'Canny', [0.1, 0.2]);
+comic_edges = bwmorph(comic_edges, 'thin');
+comic_edges = comic_edges & final_mask;
+
+% add black outlines
+line_thickness = 1;
+thick_edges = imdilate(comic_edges, strel('disk', line_thickness));
+for c = 1:3
+    comic_foreground(:,:,c) = comic_foreground(:,:,c) .* uint8(~thick_edges);
+end
+
+% apply the comic style only where the foreground mask exists
+comic_foreground = comic_foreground .* uint8(repmat(final_mask, [1 1 3]));
 
 %%% BACKGROUND %%%
 % apply gaussian blur to the background
@@ -164,7 +176,7 @@ subplot(5,4,11), imshow(ext_foreground_object), title('7. Extracted Foreground',
 subplot(5,4,12), imshow(ext_background_object), title('8. Extracted Background', 'FontSize', 12);
 
 subplot(5,4,14), imshow(blurred_background), title('Gaussian Blurred Background', 'FontSize', 12);
-subplot(5,4,15), imshow(comic_foreground), title('Comic Style Foreground', 'FontSize', 12);
+subplot(5,4,15), imshow(comic_foreground), title('Comic Style Foreground + Golden Glow', 'FontSize', 12);
 
 subplot(5,4,[17,18,19,20]), imshow(comic_result), title('Final Output', 'FontSize', 14, 'FontWeight', 'bold');
 
@@ -208,9 +220,9 @@ for i = 1:length(stats)
     if predictedLabel == 0
         labelText = 'Burj Khalifa';
     elseif predictedLabel == 1
-        labelText = 'Basketcf';
+        labelText = 'Basketball';
     elseif predictedLabel == 2
-        labelText = 'cf';
+        labelText = 'ball';
     elseif predictedLabel == 3
         labelText = 'Clown Fish';
     elseif predictedLabel == 4

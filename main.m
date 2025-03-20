@@ -180,7 +180,7 @@ for c = 1:3
     comic_result(:,:,c) = comic_result(:,:,c) + comic_foreground(:,:,c) .* uint8(final_mask); % add the comic foreground on top of the blurred background
 end
 
-%% Step 9: Display Results
+%% Step 7: Display Results
 % create a full screen figure
 figure('Units', 'normalized', 'Position', [0 0 1 1], ...
        'Name', 'Segmentation Results', 'NumberTitle', 'off');
@@ -203,7 +203,7 @@ subplot(5,4,15), imshow(comic_foreground), title('Comic Style Foreground + Golde
 
 subplot(5,4,[17,18,19,20]), imshow(comic_result), title('Final Output', 'FontSize', 14, 'FontWeight', 'bold');
 
-%% Step 10: Object Detection on Segmented Object in the Image
+%% Step 8: Object Detection on Segmented Object in the Image
 
 % Convert extracted foreground object to binary for region analysis
 extracted_binary = rgb2gray(ext_foreground_object) > 0;

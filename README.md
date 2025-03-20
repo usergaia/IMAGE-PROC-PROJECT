@@ -25,7 +25,7 @@ cd IMAGE-PROC-PROJECT
 
 - **MATLAB** or **VSCode** with MATLAB Extension
 - **Statistics and Machine Learning Toolbox** (for K-means clustering and KNN classification)
-- **Image Processing Toolbox** (for advanced morphological operations and texture feature extraction)
+- **Image Processing Toolbox** (for advanced morphological operations)
 
 ### File Structure
 

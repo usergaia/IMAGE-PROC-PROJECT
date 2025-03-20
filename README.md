@@ -38,7 +38,7 @@ IMAGE-PROC-PROJECT/
 └── src/                   # Contains processing scripts
 └── main.m
 ```
-**Note**: To run the `gt_mask_converter`, ensure that the ground truth files and masks are in the same hierarchy as the `images` folder.  
+**Note**: To run the `gt_mask_converter`, ensure that this is in the same hierarchy as the `images` folder.  
 
 ## 📋 Execution Workflow
 

@@ -31,8 +31,10 @@ IMAGE-PROC-PROJECT/
 │   ├── ground_truth/     # Ground truth images for accuracy evaluation
 │   └── ground_truth_mask/# Ground truth masks
 ├── models/               # Stores segmentation models
-└── scripts/              # Contains processing scripts
+└── src/                  # Contains processing scripts
+└── main.m
 ```
+**Note**: To run the `gt_mask_converter`, ensure that the ground truth files and masks are in the same hierarchy as the `images` folder.  
 
 ## 📋 Execution Workflow
 

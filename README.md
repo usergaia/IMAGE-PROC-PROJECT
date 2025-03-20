@@ -49,14 +49,14 @@ IMAGE-PROC-PROJECT/
 
 ### Step 2: Apply Canny Edge Detection and Morphological Gradient
 - Convert the image to grayscale for edge detection
-- Apply the **Canny edge detection** algorithm with thresholds [0.04, 0.15]
-- Enhance edges using a **morphological gradient** with a disk structuring element of radius 2
+- Apply **Canny edge detection** 
+- Enhance edges using a **morphological gradient**
 
 ### Step 3: Create Initial Mask and Reduce Noise with Morphological Operations
 - Fill holes in the edges to generate an initial mask
 - Refine using **morphological operations**:
-  - Apply closing with disk(5) to connect nearby edges
-  - Apply opening with disk(2) to remove small noise
+  - Apply closing to connect nearby edges
+  - Apply opening to remove small noise
   - Remove small disconnected regions (<500 pixels)
 - Keep only the **largest connected component** if multiple objects are detected
 
@@ -68,11 +68,11 @@ IMAGE-PROC-PROJECT/
 - Create a K-means based mask by selecting pixels from the main cluster
 
 ### Step 5: Refine K-means Segmentation with Morphological Operations
-- Apply closing with disk(5) to connect nearby parts
+- Apply closing to connect nearby parts
 - Fill any remaining holes in the mask
 - Remove small objects (<500 pixels)
 - Keep only the **largest connected component** in the final mask
-- Fall back to initial mask if no components remain after refinement
+
 
 ### Step 6: Extract Objects Using Final Mask
 - Extract foreground object by multiplying the image with the final mask
@@ -99,13 +99,12 @@ The script creates a visualization showing:
 - Original Image
 - Each intermediate step of the segmentation process (8 steps)
 - Processed background and foreground components
-- Final combined output with artistic styling
+- Final combined output with styling
 
 ### Step 8: Object Detection on Segmented Object in the Image
 - Extract region properties (BoundingBox) from the final mask
 - Load a pre-trained KNN model from 'models/knnModel.mat'
 - Extract image features using the `extractImageFeatures` function:
-  - Standardize image size to 256×256
   - Calculate texture features using Gray Level Co-occurrence Matrix (GLCM)
   - Extract Haralick features (energy, contrast, homogeneity, entropy)
   - Compute normalized color histograms for each RGB channel
@@ -118,8 +117,8 @@ The script creates a visualization showing:
 - Draw bounding boxes and labels on the final image
 
 ### Step 9: Performance Evaluation (Segmentation IoU)
-- Preprocess the ground truth mask for comparison
-- Ensure both predicted and ground truth masks are binary
+- Preprocess masks for comparison
+- Ensure both predicted (final_mask) and ground truth masks are binary
 - Calculate Intersection over Union (IoU):
   ```
   IoU = (Intersection / Union) * 100%

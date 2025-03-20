@@ -5,9 +5,9 @@
 clc; clear; close all;
 
 %% Step 1: Read and Resize Image
-img = imread('images/raw/lm.jpg'); % input image
-exp_ext_obj = imread('images/ground_truth/lm.jpg'); % expected extracted object (ground truth)
-gt_mask = imread('images/ground_truth_mask/lm_m.jpg'); % ground truth mask
+img = imread('images/raw/car.jpg'); % input image
+exp_ext_obj = imread('images/ground_truth/car.jpg'); % expected extracted object (ground truth)
+gt_mask = imread('images/ground_truth_mask/car_m.jpg'); % ground truth mask
 
 img = imresize(img, [512 512]); 
 exp_ext_obj = imresize(exp_ext_obj, [512 512]);
@@ -222,7 +222,7 @@ for i = 1:length(stats)
     elseif predictedLabel == 1
         labelText = 'Basketball';
     elseif predictedLabel == 2
-        labelText = 'ball';
+        labelText = 'Car';
     elseif predictedLabel == 3
         labelText = 'Clown Fish';
     elseif predictedLabel == 4

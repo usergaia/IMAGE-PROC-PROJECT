@@ -7,10 +7,10 @@ This script utilizes several advanced techniques for precise image segmentation 
 - **Morphological Operations** - Refine object masks
 - **K-means Clustering** - Separate objects from backgrounds
 - **Object Extraction** - Isolate and process objects independently
-- **Comic Style Processing** - Apply artistic effects to foreground objects
+- **Comic Style Processing** - Apply artistic effects to foreground objects (posterization)
 - **Background Modification** - Apply Gaussian blur to background
-- **Object Detection & Classification** - Identify specific objects using machine learning
-- **Performance Evaluation** - Calculate IoU accuracy with ground truth
+- **Object Detection & Classification** - Identify specific objects using machine learning (KNN)
+- **Performance Evaluation** - Calculate IoU accuracy with ground truth (Segmentation)
 
 ## 🚀 Setup Instructions
 
@@ -23,8 +23,9 @@ cd IMAGE-PROC-PROJECT
 
 ### Dependencies
 
-- **MATLAB** or **VSCode** with the MATLAB Extension
-- **Statistics and Machine Learning Toolbox** in MATLAB
+- **MATLAB** or **VSCode** with MATLAB Extension
+- **Statistics and Machine Learning Toolbox** (for K-means clustering and KNN classification)
+- **Image Processing Toolbox** (for advanced morphological operations and texture feature extraction)
 
 ### File Structure
 
@@ -136,9 +137,3 @@ The script automatically evaluates segmentation accuracy using:
 - **Intersection over Union (IoU)** - A standard metric for segmentation quality
 - Visual comparison between expected and actual results
 - Console output showing exact IoU percentage
-
-## 📦 Requirements
-
-- **MATLAB** or **VSCode** with MATLAB Extension
-- **Statistics and Machine Learning Toolbox** (for K-means clustering and KNN classification)
-- **Image Processing Toolbox** (for advanced morphological operations and texture feature extraction)

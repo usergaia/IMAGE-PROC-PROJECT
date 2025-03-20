@@ -8,7 +8,7 @@ This script performs image segmentation using advanced techniques, including **e
 
 ### **Clone the Repository**  
 Run the following command in your terminal:  
-```bash
+```plaintext
 git clone https://github.com/usergaia/IMAGE-PROC-PROJECT.git
 cd IMAGE-PROC-PROJECT
 ```
@@ -19,7 +19,7 @@ cd IMAGE-PROC-PROJECT
   ```
 
 4. **File Structure | Segmentation Accuracy Evaluation**:
-```bash
+```plaintext
    - Place input images in the **images/raw/** directory.  
    - Models are stored in the **models/** directory.
      To check accuracy:

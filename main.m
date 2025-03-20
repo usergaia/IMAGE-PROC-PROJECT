@@ -7,6 +7,7 @@ clc; clear; close all;
 %% Step 1: Read and Resize Image
 
 % uncomment the desired image to be processed
+
 img = imread('images/raw/ball.jpg'); % input image
 exp_ext_obj = imread('images/ground_truth/ball.jpg'); % expected extracted object (ground truth)
 gt_mask = imread('images/ground_truth_mask/ball_m.jpg'); % ground truth mask
@@ -26,6 +27,10 @@ gt_mask = imread('images/ground_truth_mask/ball_m.jpg'); % ground truth mask
 %img = imread('images/raw/lm.jpg'); % input image
 %exp_ext_obj = imread('images/ground_truth/lm.jpg'); % expected extracted object (ground truth)
 %gt_mask = imread('images/ground_truth_mask/lm_m.jpg'); % ground truth mask
+
+%img = imread('test1.jpg'); % input image
+%exp_ext_obj = imread('test2.jpg'); % expected extracted object (ground truth)
+%gt_mask = imread('test2.jpg'); % ground truth mask
 
 img = imresize(img, [512 512]); 
 exp_ext_obj = imresize(exp_ext_obj, [512 512]);
@@ -322,6 +327,11 @@ else
     binary_gt = imbinarize(gt_mask); % convert to binary directly if it is already grayscale
 end
 
+if final_mask == 3
+    gray_pred = final_mask(:, :, 1); % convert to grayscale if it has 3 channels
+    final_mask = imbinarize(gray_pred); 
+end
+
 % remove small objects and fill holes in the ground truth mask
 binary_gt = bwareaopen(binary_gt, 100); 
 binary_gt = imfill(binary_gt, 'holes'); 
@@ -345,7 +355,12 @@ intersection = sum(binary_gt(:) & final_mask(:));
 union = sum(binary_gt(:) | final_mask(:));  
 
 % calculate IoU (Intersection ÷ Union)
-iou = intersection / union * 100;
+if union == 0
+    iou = 0;
+else
+    iou = (intersection / union) * 100;
+end
+
 disp('=================================================|');
 fprintf('IoU Accuracy: %.2f%%\n', iou);
 disp('=================================================|');

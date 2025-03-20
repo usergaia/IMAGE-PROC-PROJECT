@@ -3,7 +3,7 @@ clear;
 close all;
 
 % Read the image
-img = imread('images/ground_truth/cf.jpg');
+img = imread('t2.jpg');
 
 % convert to grayscale (assuming the image is not already in grayscale)
 gimg = rgb2gray(img);  
@@ -15,13 +15,13 @@ bimg = gimg >= 1;
 bimg = bwareaopen(bimg, 100); 
 bimg = imfill(bimg, 'holes');  
 
-figure;
+figure; % compare the original image and the mask
 subplot(1, 2, 1);
 imshow(img);
 subplot(1, 2, 2);
 imshow(bimg);
 
 
-% imwrite(bimg, 'images/ground_truth_mask/cf_m.jpg'); % uncomment to save the mask
+% imwrite(bimg, 'test2.jpg'); % uncomment to save the mask
 
 

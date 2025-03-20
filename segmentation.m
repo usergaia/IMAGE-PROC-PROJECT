@@ -5,8 +5,13 @@
 clc; clear; close all;
 
 %% Step 1: Read and Resize Image
-img = imread('images/car.jpg');
+img = imread('images/raw/cf.jpg'); % input image
+exp_ext_obj = imread('images/ground_truth/cf.jpg'); % expected extracted object (ground truth)
+gt_mask = imread('images/ground_truth_mask/cf_m.jpg'); % ground truth mask
+
 img = imresize(img, [512 512]); 
+exp_ext_obj = imresize(exp_ext_obj, [512 512]);
+gt_mask = imresize(gt_mask, [512 512]); 
 
 %% Step 2: Apply Canny Edge Detection and Morphological Gradient
 
@@ -96,7 +101,7 @@ end
 % get the dimensions of the input image (height, width, and channels) 
 [h, w, ~] = size(img);  % ignore channel because we don't need it
 
-% define the number of posterization levels to reduce unique colors for more cartoonish effect.  
+% define the number of posterization levels to reduce unique colors for more cftoonish effect.  
 posterization_levels = 8;  
 
 % apply posterization by grouping pixel values into fewer shades
@@ -142,7 +147,9 @@ end
 
 %% Step 9: Display Results
 % create a full screen figure
-figure('Units', 'normalized', 'Position', [0 0 1 1]);
+figure('Units', 'normalized', 'Position', [0 0 1 1], ...
+       'Name', 'Segmentation Results', 'NumberTitle', 'off');
+
 
 subplot(5,4,[1,2,3,4]), imshow(img), title('Original Image', 'FontSize', 14, 'FontWeight', 'bold');
 
@@ -170,17 +177,17 @@ extracted_binary = rgb2gray(ext_foreground_object) > 0;
 stats = regionprops(final_mask, 'Centroid', 'BoundingBox');
 
 % Load the pre-trained KNN model
-load('knnModel.mat', 'knnModel');
+load('models/knnModel.mat', 'knnModel');
 
 % Create figure for displaying results
-figure;
+figure('Name', 'OUTPUT', 'NumberTitle', 'off');
 subplot(1, 2, 1);
 imshow(img);
-title('Original Image');
+title('BEFORE');
 
 subplot(1, 2, 2);
 imshow(comic_result);
-title('Object Detection and Classification');
+title('AFTER');
 hold on;
 
 % Iterate through each detected region
@@ -201,9 +208,9 @@ for i = 1:length(stats)
     if predictedLabel == 0
         labelText = 'Burj Khalifa';
     elseif predictedLabel == 1
-        labelText = 'Basketball';
+        labelText = 'Basketcf';
     elseif predictedLabel == 2
-        labelText = 'Car';
+        labelText = 'cf';
     elseif predictedLabel == 3
         labelText = 'Clown Fish';
     elseif predictedLabel == 4
@@ -271,3 +278,63 @@ end
 
 
 disp('IMAGE SEGMENTATION AND OBJECT DETECTION COMPLETED!');
+
+%% PERFORMANCE EVALUATION (SEGMENTATION | IoU)
+disp('------------------------------------------------------|');
+disp('EVALUATING SEGMENTATION PERFORMANCE...');
+disp('------------------------------------------------------|');
+
+% preprocess the ground truth mask
+if gt_mask == 3
+    gray_gt = gt_mask(:, :, 1); % convert to grayscale if it has 3 channels
+    binary_gt = imbinarize(gray_gt); 
+else
+    binary_gt = imbinarize(gt_mask); % convert to binary directly if it is already grayscale
+end
+
+% remove small objects and fill holes in the ground truth mask
+binary_gt = bwareaopen(binary_gt, 100); 
+binary_gt = imfill(binary_gt, 'holes'); 
+
+% convert ground truth and predicted masks to binary (if they are not already)%
+disp('Confirming Binary Masks...');
+if any(binary_gt(:) > 1) || any(final_mask(:) > 1)
+    binary_gt = binary_gt > 0;  
+    final_mask = final_mask > 0;
+end
+
+disp('Unique values in binary ground truth mask (Expected Extracted Mask):'); 
+disp(unique(binary_gt));
+
+disp('Unique values in binary predicted mask (Actual Extracted Mask):');
+disp(unique(final_mask));
+
+% calculate the intersection and union of the ground truth and predicted masks
+disp('Calculating Intersection over Union (IoU) Accuracy...');
+intersection = sum(binary_gt(:) & final_mask(:));  
+union = sum(binary_gt(:) | final_mask(:));  
+
+% calculate IoU (Intersection ÷ Union)
+iou = intersection / union * 100;
+disp('=================================================|');
+fprintf('IoU Accuracy: %.2f%%\n', iou);
+disp('=================================================|');
+
+% display both ground truth and predicted masks
+figure('Name', 'COMPARISON: Expected VS Actual', 'NumberTitle', 'off');
+subplot(2, 2, 1);
+imshow(exp_ext_obj);
+title('Expected Extracted Object');
+
+subplot(2, 2, 2);
+imshow(ext_foreground_object);
+title('Actual Extracted Object');
+
+subplot(2, 2, 3);
+imshow(binary_gt);
+title('Binary Ground Truth Mask');
+
+subplot(2, 2, 4);
+imshow(final_mask);
+title('Binary Predicted Mask');
+

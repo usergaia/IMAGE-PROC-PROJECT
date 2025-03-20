@@ -5,9 +5,27 @@
 clc; clear; close all;
 
 %% Step 1: Read and Resize Image
-img = imread('images/raw/car.jpg'); % input image
-exp_ext_obj = imread('images/ground_truth/car.jpg'); % expected extracted object (ground truth)
-gt_mask = imread('images/ground_truth_mask/car_m.jpg'); % ground truth mask
+
+% uncomment the desired image to be processed
+img = imread('images/raw/ball.jpg'); % input image
+exp_ext_obj = imread('images/ground_truth/ball.jpg'); % expected extracted object (ground truth)
+gt_mask = imread('images/ground_truth_mask/ball_m.jpg'); % ground truth mask
+
+% img = imread('images/raw/bk.jpg'); % input image
+% exp_ext_obj = imread('images/ground_truth/bk.jpg'); % expected extracted object (ground truth)
+% gt_mask = imread('images/ground_truth_mask/bk_m.jpg'); % ground truth mask
+
+%img = imread('images/raw/car.jpg'); % input image
+%exp_ext_obj = imread('images/ground_truth/car.jpg'); % expected extracted object (ground truth)
+%gt_mask = imread('images/ground_truth_mask/car_m.jpg'); % ground truth mask
+
+%img = imread('images/raw/cf.jpg'); % input image
+%exp_ext_obj = imread('images/ground_truth/cf.jpg'); % expected extracted object (ground truth)
+%gt_mask = imread('images/ground_truth_mask/cf_m.jpg'); % ground truth mask
+
+%img = imread('images/raw/lm.jpg'); % input image
+%exp_ext_obj = imread('images/ground_truth/lm.jpg'); % expected extracted object (ground truth)
+%gt_mask = imread('images/ground_truth_mask/lm_m.jpg'); % ground truth mask
 
 img = imresize(img, [512 512]); 
 exp_ext_obj = imresize(exp_ext_obj, [512 512]);
@@ -349,4 +367,6 @@ title('Binary Ground Truth Mask');
 subplot(2, 2, 4);
 imshow(final_mask);
 title('Binary Predicted Mask');
+
+
 
